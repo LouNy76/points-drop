@@ -14,7 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <script>
-  const FIREBASE_CONFIG = {
+   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBrVEiC9tfYJzalicCYXtnXj0GDTE3Qcas",
     authDomain: "points-drop-finale.firebaseapp.com",
     databaseURL: "https://points-drop-finale-default-rtdb.europe-west1.firebasedatabase.app",
@@ -737,6 +737,7 @@ function J(v, fallback){ if(v==null) return fallback; try{ return JSON.parse(v);
 let CONFIG = { questions: [] };
 let GAME = { phase:'setup', qIndex:0 };
 let myTeamName = null;
+let teamQuestionRenderedFor = null; // qIndex the allocation form is currently built for — guards against rebuilding it mid-typing
 let myLastAllocSubmitted = null; // cache of my current alloc for this question
 let lastOkTime = Date.now();
 let currentRole = null;
@@ -976,7 +977,13 @@ async function teamTick(){
     if(ansRaw){
       teamShow('team-submitted-box');
     } else {
-      teamRenderQuestion(qi, q, pts);
+      // only build the form once per question — rebuilding it on every ~2.2s poll
+      // was wiping out whatever the user was mid-typing, making inputs feel like
+      // they randomly reset or vanished
+      if(teamQuestionRenderedFor !== qi){
+        teamRenderQuestion(qi, q, pts);
+        teamQuestionRenderedFor = qi;
+      }
       teamShow('team-question-box');
     }
     return;
@@ -1007,17 +1014,34 @@ function teamRenderQuestion(qi, q, pts){
     row.innerHTML = `
       <span class="opt-label">${escapeHtml(opt)}</span>
       <button class="opt-all-btn" type="button" onclick="teamAllocAll(${i}, ${pts})">ALL</button>
-      <input class="opt-input" type="number" inputmode="numeric" min="0" max="${pts}" value="${window._teamAlloc[i]}" oninput="teamAllocChange(${i}, this.value, ${pts})">
+      <input class="opt-input" type="tel" inputmode="numeric" pattern="[0-9]*" value="${window._teamAlloc[i]}"
+        oninput="teamAllocChange(${i}, this.value, ${pts})"
+        onfocus="this.select()"
+        onblur="teamAllocBlur(${i}, this, ${pts})"
+        onkeydown="if(event.key==='Enter'){ this.blur(); }">
     `;
     list.appendChild(row);
   });
   teamUpdateTotal(pts);
 }
 function teamAllocChange(i, val, pts){
+  // just track what's typed and update the running total — deliberately NOT touching
+  // any input's DOM value here (not even this one). Rewriting a focused input's value
+  // mid-keystroke is what caused digits to seem to vanish while typing on mobile.
   let n = parseInt(val,10); if(isNaN(n)||n<0) n=0;
   window._teamAlloc[i] = n;
   teamUpdateTotal(pts);
-  teamRefreshInputs();
+}
+function teamAllocBlur(i, inputEl, pts){
+  // now that they've finished with this box (tapped away, or hit Enter), clamp it into
+  // range and reflect the corrected value back — this is the one moment it's safe to
+  // rewrite the input without fighting the user's typing
+  let n = window._teamAlloc[i] || 0;
+  if(n > pts) n = pts;
+  if(n < 0) n = 0;
+  window._teamAlloc[i] = n;
+  inputEl.value = n;
+  teamUpdateTotal(pts);
 }
 function teamAllocAll(i, pts){
   window._teamAlloc = window._teamAlloc.map((_,idx)=> idx===i ? pts : 0);
