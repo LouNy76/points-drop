@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>The Points Drop — Finale</title>
+
+<!-- ===== Firebase (free tier) — powers cross-device sync ===== -->
+<!-- 1. Create a free project at https://console.firebase.google.com
+     2. Enable "Realtime Database" (Build > Realtime Database > Create Database > start in test mode, then
+        replace the rules with the open read/write rules from the setup instructions).
+     3. Project settings (gear icon) > General > "Your apps" > click </> to add a web app > copy the config object.
+     4. Paste your own config values into FIREBASE_CONFIG below, replacing every "REPLACE_ME_..." placeholder. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script>
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBrVEiC9tfYJzalicCYXtnXj0GDTE3Qcas",
+    authDomain: "points-drop-finale.firebaseapp.com",
+    databaseURL: "https://points-drop-finale-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "points-drop-finale",
+    storageBucket: "points-drop-finale.firebasestorage.app",
+    messagingSenderId: "136918111985",
+    appId: "1:136918111985:web:bbeb5254d00365aa027b50"
+  };
+  // If setup was skipped or a value was mistyped, fail loudly with an on-page message
+  // instead of a blank page with a cryptic console error — this is the single most likely
+  // "why isn't this working" moment, so it should be impossible to miss.
+  window.__FIREBASE_READY__ = false;
+  window.__FIREBASE_INIT_ERROR__ = null;
+  const missingKeys = Object.entries(FIREBASE_CONFIG)
+    .filter(([,v]) => typeof v === 'string' && v.startsWith('REPLACE_ME_'))
+    .map(([k]) => k);
+  if(missingKeys.length > 0){
+    window.__FIREBASE_INIT_ERROR__ = 'Firebase config still has placeholder values for: ' + missingKeys.join(', ') + '. Paste your real project config (from Firebase console > Project settings > Your apps) into FIREBASE_CONFIG near the top of this file.';
+  } else {
+    try{
+      firebase.initializeApp(FIREBASE_CONFIG);
+      window.__FIREBASE_READY__ = true;
+    }catch(e){
+      window.__FIREBASE_INIT_ERROR__ = 'firebase.initializeApp() threw an error: ' + (e && e.message ? e.message : e) + '. Double-check every value in FIREBASE_CONFIG is copied correctly.';
+    }
+  }
+</script>
+
+<style>
+  :root{
+    --bg:#0a0b10;
+    --surface:#15171f;
+    --surface2:#1d2029;
+    --line:#2a2e3a;
+    --text:#f5f4f0;
+    --muted:#8a8d9a;
+    --gold:#f4c430;
+    --gold-dim:#8a6f1a;
+    --magenta:#ff3b7f;
+    --teal:#23d9a0;
+    --blue:#4d8dff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .display{font-family:'Arial Black','Helvetica Neue',Helvetica,sans-serif; font-weight:900; letter-spacing:-0.02em;}
+  .hidden{display:none !important;}
+  .screen{min-height:100vh; display:flex; flex-direction:column;}
+  .wrap{max-width:900px; margin:0 auto; width:100%; padding:20px;}
+  .wrap-wide{max-width:1400px; margin:0 auto; width:100%; padding:28px 40px;}
+
+  /* buttons */
+  button{
+    font-family:inherit; cursor:pointer; border:none; border-radius:12px;
+    font-weight:700; transition:transform .08s ease, filter .15s ease;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-primary{background:var(--gold); color:#1a1400; padding:18px 24px; font-size:18px;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:disabled{background:#4a4632; color:#7a7663; cursor:not-allowed;}
+  .btn-secondary{background:var(--surface2); color:var(--text); border:1px solid var(--line); padding:14px 20px; font-size:15px;}
+  .btn-danger{background:transparent; color:var(--magenta); border:1px solid var(--magenta); padding:10px 16px; font-size:13px;}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--line); padding:8px 14px; font-size:13px;}
+  .btn-block{width:100%; display:block;}
+
+  /* role select */
+  #screen-role{align-items:center; justify-content:center; text-align:center;}
+  #screen-role h1{font-size:42px; margin:0 0 6px; color:var(--gold);}
+  #screen-role p.sub{color:var(--muted); margin:0 0 40px; font-size:16px;}
+  .role-cards{display:flex; gap:16px; flex-wrap:wrap; justify-content:center;}
+  .role-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:32px 28px; width:220px; cursor:pointer; transition:border-color .15s, transform .1s;
+  }
+  .role-card:hover{border-color:var(--gold);}
+  .role-card:active{transform:scale(0.98);}
+  .role-card .emoji{font-size:40px; display:block; margin-bottom:12px;}
+  .role-card b{font-size:18px;}
+
+  /* headers */
+  .eyebrow{color:var(--gold); font-size:12px; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; margin:0 0 6px;}
+  h2.title{font-size:26px; margin:0 0 4px;}
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--teal); display:inline-block; margin-right:6px;}
+  .status-dot.off{background:var(--magenta);}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--surface);}
+  .topbar .conn{font-size:12px; color:var(--muted);}
+
+  /* team join */
+  .join-box{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:28px; margin-top:24px;}
+  input[type=text], input[type=number]{
+    background:var(--surface2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:14px 16px; font-size:17px; width:100%; font-family:inherit;
+  }
+  input:focus{outline:2px solid var(--gold); outline-offset:1px;}
+  label{font-size:13px; color:var(--muted); display:block; margin-bottom:6px;}
+
+  /* points pill */
+  .points-pill{
+    display:inline-flex; align-items:center; gap:8px; background:var(--surface2);
+    border:1px solid var(--gold-dim); border-radius:999px; padding:8px 18px; font-size:15px;
+  }
+  .points-pill b{color:var(--gold); font-size:20px;}
+
+  /* question card */
+  .q-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px; margin-top:18px;}
+  .q-text{font-size:20px; font-weight:700; margin:0 0 16px;}
+  .opt-row{
+    display:flex; align-items:center; gap:10px; padding:12px; margin-bottom:10px;
+    background:var(--surface2); border:1px solid var(--line); border-radius:12px;
+  }
+  .opt-label{flex:1; font-size:15px; font-weight:600;}
+  .opt-input{width:90px; text-align:right;}
+  .opt-all-btn{background:var(--gold-dim); color:#fff; font-size:12px; padding:8px 10px; border-radius:8px;}
+  .alloc-total{
+    display:flex; justify-content:space-between; align-items:center; margin:14px 0;
+    padding:14px 16px; border-radius:12px; font-size:16px; font-weight:700;
+    background:var(--surface2); border:1px solid var(--line);
+  }
+  .alloc-total.ok{border-color:var(--teal); color:var(--teal);}
+  .alloc-total.bad{border-color:var(--magenta); color:var(--magenta);}
+
+  /* waiting */
+  .waiting{text-align:center; padding:60px 20px;}
+  .waiting .spinner{
+    width:36px; height:36px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold);
+    margin:0 auto 18px; animation:spin 1s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* reveal */
+  .reveal-box{text-align:center; padding:30px 20px;}
+  .reveal-box .correct-ans{font-size:26px; font-weight:800; color:var(--teal); margin:10px 0;}
+  .reveal-box .delta{font-size:48px; margin:14px 0;}
+  .delta.up{color:var(--teal);}
+  .delta.down{color:var(--magenta);}
+
+  /* host layout */
+  .host-grid{display:grid; grid-template-columns:1fr 320px; gap:24px;}
+  @media(max-width:1000px){.host-grid{grid-template-columns:1fr;}}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px;}
+
+  /* setup */
+  .setup-q{border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; background:var(--surface2);}
+  .setup-q-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .setup-opt-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .radio-correct{width:20px; height:20px; accent-color:var(--teal); flex-shrink:0;}
+
+  /* leaderboard */
+  .lb-row{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .lb-rank{width:28px; font-weight:800; color:var(--muted); font-size:16px;}
+  .lb-row.first .lb-rank{color:var(--gold);}
+  .lb-name{width:130px; font-weight:700; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .lb-bar-bg{flex:1; background:var(--surface2); border-radius:8px; height:26px; overflow:hidden;}
+  .lb-bar{height:100%; background:linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius:8px; transition:width .5s ease;}
+  .lb-row.first .lb-bar{background:linear-gradient(90deg, #a67d00, var(--gold));}
+  .lb-pts{width:76px; text-align:right; font-weight:800; font-size:17px; color:var(--gold);}
+
+  .stake-row{margin-bottom:20px;}
+  .stake-label{display:flex; justify-content:space-between; font-size:clamp(16px, 1.8vw, 22px); font-weight:700; margin-bottom:8px;}
+  .stake-pts{color:var(--gold);}
+  .stake-bar-bg{background:var(--surface2); border-radius:10px; height:40px; overflow:hidden;}
+  .stake-bar{height:100%; background:linear-gradient(90deg, var(--blue), var(--teal)); border-radius:10px; transition:width .6s ease;}
+
+  /* big host stage — sized to actually read from across a room on a projector, not a laptop */
+  .stage-eyebrow{font-size:clamp(15px, 1.6vw, 20px) !important; letter-spacing:0.14em;}
+  .stage-q{
+    font-size:clamp(30px, 4vw, 52px); font-weight:800; line-height:1.2; margin:8px 0 24px;
+    text-shadow:0 0 30px rgba(244,196,48,0.15);
+  }
+  .stage-opts{display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr));}
+  .stage-opt{
+    background:var(--surface2); border:2px solid var(--line); border-radius:16px; padding:26px 20px;
+    font-size:clamp(20px, 2.4vw, 30px); font-weight:700; text-align:center;
+    transition:border-color .3s ease, background .3s ease, transform .3s ease;
+  }
+  .stage-opt.is-correct{
+    border-color:var(--teal); background:rgba(35,217,160,0.16); color:var(--teal);
+    box-shadow:0 0 40px rgba(35,217,160,0.35); transform:scale(1.03);
+    animation:correct-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes correct-pulse{
+    0%, 100%{ box-shadow:0 0 30px rgba(35,217,160,0.3); }
+    50%{ box-shadow:0 0 55px rgba(35,217,160,0.55); }
+  }
+  .qr-wrap{text-align:center; background:#fff; border-radius:16px; padding:20px; margin-top:16px;}
+  .join-url{word-break:break-all; font-size:13px; color:var(--muted); text-align:center; margin-top:8px;}
+
+  .pill-count{background:var(--surface2); border:1px solid var(--line); border-radius:999px; padding:6px 14px; font-size:13px; color:var(--muted);}
+  .team-chip{display:inline-block; background:var(--surface2); border:1px solid var(--line); border-radius:999px; padding:6px 12px; margin:4px 6px 0 0; font-size:13px;}
+  .points-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .points-row input{width:120px;}
+
+  .footer-note{color:var(--muted); font-size:12px; text-align:center; margin-top:30px;}
+  .final-hero{text-align:center; padding:40px 20px;}
+  .final-hero .winner-name{
+    font-size:clamp(36px, 5vw, 64px); color:var(--gold); margin:10px 0; font-weight:800;
+    text-shadow:0 0 40px rgba(244,196,48,0.5);
+    animation:winner-glow 2s ease-in-out infinite;
+  }
+  .final-hero .trophy{font-size:clamp(56px, 8vw, 88px); animation:trophy-bounce 1.8s ease-in-out infinite;}
+  @keyframes winner-glow{
+    0%, 100%{ text-shadow:0 0 30px rgba(244,196,48,0.4); }
+    50%{ text-shadow:0 0 60px rgba(244,196,48,0.8); }
+  }
+  @keyframes trophy-bounce{
+    0%, 100%{ transform:translateY(0); }
+    50%{ transform:translateY(-10px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="firebase-error-banner" class="hidden" style="position:fixed; inset:0; z-index:9999; background:#1a0000; color:#ffdede; display:flex; align-items:center; justify-content:center; padding:30px;">
+  <div style="max-width:600px; text-align:center;">
+    <div style="font-size:40px; margin-bottom:12px;">⚠️</div>
+    <h2 style="margin:0 0 14px; color:#ff8080;">Firebase isn't set up correctly</h2>
+    <p id="firebase-error-detail" style="font-size:15px; line-height:1.5; color:#ffdede;"></p>
+    <p style="font-size:13px; color:#ffb0b0; margin-top:20px;">Nothing else on this page will work until this is fixed — check the FIREBASE_CONFIG block near the top of the HTML file.</p>
+  </div>
+</div>
+
+<!-- ===================== ROLE SELECT ===================== -->
+<div id="screen-role" class="screen">
+  <div class="wrap">
+    <h1 class="display">THE POINTS DROP</h1>
+    <p class="sub">Finale round · split your points, back your answer, hold your nerve.</p>
+    <div class="role-cards">
+      <div class="role-card" onclick="chooseRole('team')">
+        <span class="emoji">📱</span>
+        <b>Join as a team</b>
+        <div style="color:var(--muted); font-size:13px; margin-top:6px;">On your phone</div>
+      </div>
+      <div class="role-card" onclick="chooseRole('host')">
+        <span class="emoji">🖥️</span>
+        <b>Host / Big screen</b>
+        <div style="color:var(--muted); font-size:13px; margin-top:6px;">Run the finale</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TEAM APP ===================== -->
+<div id="screen-team" class="screen hidden">
+  <div class="topbar">
+    <div><b id="team-name-label" class="display" style="color:var(--gold);">TEAM</b></div>
+    <div class="conn"><span id="team-conn-dot" class="status-dot"></span><span id="team-conn-text">live</span></div>
+  </div>
+  <div class="wrap" style="padding-top:24px;">
+
+    <!-- join form -->
+    <div id="team-join-box" class="join-box hidden">
+      <p class="eyebrow">Enter the finale</p>
+      <h2 class="title">What's your team name?</h2>
+      <div style="margin-top:16px;">
+        <input type="text" id="team-name-input" placeholder="e.g. The Quiztards" maxlength="24" autocomplete="off">
+      </div>
+      <button class="btn-primary btn-block" style="margin-top:14px;" id="team-join-btn" onclick="teamJoin()">Join finale</button>
+      <div id="team-join-status" style="margin-top:12px; font-size:13px;"></div>
+      <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+        <button class="btn-ghost" onclick="teamStorageTest()">Run storage test (leaves a marker for the host to check)</button>
+        <div id="team-storage-test-result" style="font-size:13px; margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- points display, always visible once joined -->
+    <div id="team-points-wrap" class="hidden" style="text-align:center; margin-bottom:6px;">
+      <div class="points-pill">Points remaining <b id="team-points-val">0</b></div>
+    </div>
+
+    <!-- waiting for lobby/host -->
+    <div id="team-waiting-lobby" class="waiting hidden">
+      <div class="spinner"></div>
+      <div style="font-size:17px; font-weight:700;">You're in!</div>
+      <div style="color:var(--muted); margin-top:6px;">Waiting for the host to start the finale…</div>
+    </div>
+
+    <!-- question / allocation -->
+    <div id="team-question-box" class="q-card hidden">
+      <p class="eyebrow" id="team-q-index">Question 1</p>
+      <p class="q-text" id="team-q-text"></p>
+      <div id="team-options-list"></div>
+      <div id="team-alloc-total" class="alloc-total bad">
+        <span>Allocated</span><span id="team-alloc-total-val">0 / 0</span>
+      </div>
+      <button class="btn-primary btn-block" id="team-submit-btn" onclick="teamSubmit()" disabled>Lock in answer</button>
+      <div class="footer-note">You must place all your points somewhere. Tap "ALL" to send everything to one option.</div>
+    </div>
+
+    <!-- already submitted, waiting for reveal -->
+    <div id="team-submitted-box" class="waiting hidden">
+      <div class="spinner"></div>
+      <div style="font-size:17px; font-weight:700;">Answer locked in ✅</div>
+      <div style="color:var(--muted); margin-top:6px;">Waiting for the host to reveal the answer…</div>
+      <button class="btn-ghost" style="margin-top:18px;" onclick="teamEditAnswer()">Edit before reveal</button>
+    </div>
+
+    <!-- zero points, sit out -->
+    <div id="team-zero-box" class="waiting hidden">
+      <div style="font-size:40px;">👀</div>
+      <div style="font-size:17px; font-weight:700; margin-top:8px;">You're out of points — enjoy the show!</div>
+      <div style="color:var(--muted); margin-top:6px;">Nothing to allocate this round.</div>
+    </div>
+
+    <!-- reveal result -->
+    <div id="team-reveal-box" class="reveal-box hidden">
+      <p class="eyebrow">Answer revealed</p>
+      <div class="correct-ans" id="team-correct-ans"></div>
+      <div class="delta" id="team-delta"></div>
+      <div style="color:var(--muted);">Points remaining: <b id="team-points-after" style="color:var(--gold);"></b></div>
+      <div class="footer-note" id="team-sat-out-note" style="display:none;">You sat this one out — your points carried over unchanged.</div>
+    </div>
+
+    <!-- final -->
+    <div id="team-final-box" class="final-hero hidden">
+      <div class="trophy" id="team-final-emoji">🏁</div>
+      <p class="eyebrow">Finale complete</p>
+      <div class="winner-name" id="team-final-place"></div>
+      <div style="color:var(--muted);">Final points: <b id="team-final-points" style="color:var(--gold);"></b></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== HOST APP ===================== -->
+<div id="screen-host" class="screen hidden">
+
+  <!-- AUTH GATE -->
+  <div id="host-auth" class="screen" style="align-items:center; justify-content:center;">
+    <div class="wrap" style="max-width:420px;">
+      <div class="join-box" id="host-auth-set-box">
+        <p class="eyebrow">Host access</p>
+        <h2 class="title">Set a host password</h2>
+        <p style="color:var(--muted); font-size:14px;">No password is set yet. Choose one now — anyone without it won't be able to open host mode, on this device or any other.</p>
+        <input type="password" id="host-auth-set-input" placeholder="Choose a password" autocomplete="off" style="margin-top:14px;">
+        <button class="btn-primary btn-block" style="margin-top:14px;" onclick="hostSetPassword()">Save password &amp; continue</button>
+      </div>
+      <div class="join-box hidden" id="host-auth-enter-box">
+        <p class="eyebrow">Host access</p>
+        <h2 class="title">Enter host password</h2>
+        <input type="password" id="host-auth-enter-input" placeholder="Password" autocomplete="off" style="margin-top:14px;">
+        <button class="btn-primary btn-block" style="margin-top:14px;" onclick="hostSubmitPassword()">Enter host mode</button>
+        <div id="host-auth-error" style="color:var(--magenta); font-size:13px; margin-top:10px; display:none;">Incorrect password — try again.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN HOST UI -->
+  <div id="host-main" class="hidden">
+  <div class="topbar">
+    <div><b class="display" style="color:var(--gold); font-size:20px;">THE POINTS DROP — HOST</b></div>
+    <div class="conn"><span id="host-conn-dot" class="status-dot"></span><span id="host-conn-text">live</span>
+      <button class="btn-ghost" style="margin-left:14px;" onclick="hostToggleChangePw()">Change password</button>
+      <button class="btn-danger" style="margin-left:8px;" onclick="hostResetGame()">Reset game</button>
+      <button class="btn-danger" style="margin-left:8px;" onclick="hostReprogrammeQuestions()">Reprogramme questions</button>
+    </div>
+  </div>
+  <div id="host-change-pw-row" class="hidden" style="padding:12px 20px; border-bottom:1px solid var(--line); background:var(--surface); display:flex; gap:10px; align-items:center;">
+    <input type="password" id="host-new-pw-input" placeholder="New password" style="max-width:220px;">
+    <button class="btn-secondary" onclick="hostChangePassword()">Save</button>
+  </div>
+  <div class="wrap-wide" style="padding-top:24px;">
+
+    <!-- SETUP -->
+    <div id="host-setup" class="hidden">
+      <p class="eyebrow">Step 1</p>
+      <h2 class="title">Set up your questions</h2>
+      <p style="color:var(--muted); font-size:14px; margin-top:0;">Add each question, its possible answers, and mark the correct one. You can edit this any time before opening the lobby.</p>
+      <div id="setup-questions-list" style="margin-top:18px;"></div>
+      <button class="btn-secondary" onclick="setupAddQuestion()">+ Add question</button>
+      <div style="margin-top:24px; display:flex; gap:12px;">
+        <button class="btn-secondary" onclick="setupSave(false)">Save draft</button>
+        <button class="btn-primary" onclick="setupSave(true)">Save &amp; open lobby →</button>
+      </div>
+    </div>
+
+    <!-- LOBBY -->
+    <div id="host-lobby" class="hidden">
+      <div class="host-grid">
+        <div class="panel">
+          <p class="eyebrow">Step 2</p>
+          <h2 class="title">Lobby open — teams are joining</h2>
+          <p style="color:var(--muted); font-size:14px;">Show the QR code on the big screen. Teams scan it, type their name, and appear below.</p>
+          <div id="lobby-team-chips" style="margin-top:16px;"></div>
+          <p class="pill-count" id="lobby-count" style="margin-top:14px; display:inline-block;">0 teams joined</p>
+          <button class="btn-ghost" style="margin-left:8px;" onclick="hostRenderLobby()">Refresh now</button>
+          <div style="margin-top:18px; padding-top:14px; border-top:1px solid var(--line);">
+            <button class="btn-ghost" onclick="hostStorageTest()">Run storage test</button>
+            <button class="btn-ghost" onclick="hostCheckTeamMarkers()">Check for team markers</button>
+            <div id="storage-test-result" style="font-size:13px; margin-top:8px;"></div>
+          </div>
+          <div style="margin-top:22px;">
+            <button class="btn-primary" onclick="hostGoToPoints()">Next: set starting points →</button>
+            <button class="btn-ghost" onclick="hostBackToSetup()" style="margin-left:8px;">← Edit questions</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="qr-wrap"><div id="qr-svg-container" style="display:inline-block; line-height:0;"></div></div>
+          <div class="join-url" id="join-url-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SET STARTING POINTS -->
+    <div id="host-points-setup" class="hidden">
+      <div class="panel" style="max-width:600px;">
+        <p class="eyebrow">Step 3</p>
+        <h2 class="title">Enter each team's starting points</h2>
+        <p style="color:var(--muted); font-size:14px;">Use the totals they built up earlier in the night.</p>
+        <div id="points-setup-list" style="margin-top:16px;"></div>
+        <button class="btn-primary" style="margin-top:20px;" onclick="hostStartFinale()">Lock points &amp; start finale 🚀</button>
+      </div>
+    </div>
+
+    <!-- QUESTION LIVE -->
+    <div id="host-question" class="hidden">
+      <div class="host-grid">
+        <div class="panel">
+          <p class="eyebrow stage-eyebrow" id="host-q-eyebrow">Question 1 of 7</p>
+          <p class="stage-q" id="host-q-text"></p>
+          <div class="stage-opts" id="host-q-opts"></div>
+          <div style="margin-top:22px; display:flex; align-items:center; gap:16px;">
+            <span class="pill-count" id="host-submit-count">0 / 0 teams submitted</span>
+            <button class="btn-primary" onclick="hostShowStakes()">Show stakes 📊</button>
+          </div>
+          <div id="host-submit-detail" style="margin-top:16px;"></div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Leaderboard</h3>
+          <div id="host-leaderboard"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAKES (points staked per option, before the correct answer is shown) -->
+    <div id="host-stakes" class="hidden">
+      <div class="host-grid">
+        <div class="panel">
+          <p class="eyebrow stage-eyebrow" id="host-stakes-eyebrow">Question 1 of 7 — how it's split</p>
+          <p class="stage-q" id="host-stakes-q-text"></p>
+          <div id="host-stakes-bars" style="margin-top:6px;"></div>
+          <div style="margin-top:22px;">
+            <button class="btn-primary" onclick="hostReveal()">Reveal answer 🎬</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Leaderboard</h3>
+          <div id="host-leaderboard-stakes"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVEAL LIVE -->
+    <div id="host-reveal" class="hidden">
+      <div class="host-grid">
+        <div class="panel">
+          <p class="eyebrow stage-eyebrow" id="host-reveal-eyebrow">Question 1 of 7 — revealed</p>
+          <p class="stage-q" id="host-reveal-q-text"></p>
+          <div class="stage-opts" id="host-reveal-opts"></div>
+          <div style="margin-top:22px;">
+            <button class="btn-primary" onclick="hostNext()">Next question →</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 style="margin-top:0;">Leaderboard</h3>
+          <div id="host-leaderboard-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINAL -->
+    <div id="host-final" class="hidden">
+      <div class="final-hero">
+        <div class="trophy">🏆</div>
+        <p class="eyebrow">Finale winner</p>
+        <div class="winner-name" id="host-final-winner"></div>
+      </div>
+      <div class="panel" style="max-width:600px; margin:0 auto;">
+        <h3 style="margin-top:0;">Final standings</h3>
+        <div id="host-final-leaderboard"></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<script>
+/* ============ Firebase config check ============ */
+if(window.__FIREBASE_INIT_ERROR__){
+  document.getElementById('firebase-error-detail').textContent = window.__FIREBASE_INIT_ERROR__;
+  document.getElementById('firebase-error-banner').classList.remove('hidden');
+}
+
+/* ============ storage helpers ============ */
+/* ---- Self-contained QR generator (byte mode, ECC level L, versions 1-6, fixed mask 0) ----
+   No network calls needed — renders entirely client-side as inline SVG, so it works offline
+   and doesn't depend on a third-party QR image service being up on the night.
+   Verified offline against the ISO 18004 Reed-Solomon test vector and 300+ round-trip tests. */
+const QR = (function(){
+  const EXP = new Array(512), LOG = new Array(256);
+  { let x = 1;
+    for (let i=0;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&0x100) x^=0x11D; }
+    for (let i=255;i<512;i++) EXP[i]=EXP[i-255];
+  }
+  function gmul(a,b){ if(a===0||b===0) return 0; return EXP[LOG[a]+LOG[b]]; }
+  function rsGenPoly(nEc){
+    let poly=[1];
+    for(let i=0;i<nEc;i++){
+      const r = EXP[i], d = poly.length-1;
+      const np = new Array(d+2).fill(0);
+      np[0]=poly[0];
+      for(let k=1;k<=d;k++) np[k]=poly[k]^gmul(poly[k-1],r);
+      np[d+1]=gmul(poly[d],r);
+      poly=np;
+    }
+    return poly;
+  }
+  function rsDivide(data,nEc){
+    const gen = rsGenPoly(nEc);
+    const msg = data.slice(); for(let i=0;i<nEc;i++) msg.push(0);
+    for(let i=0;i<data.length;i++){
+      const coef=msg[i];
+      if(coef!==0) for(let j=0;j<gen.length;j++) msg[i+j]^=gmul(gen[j],coef);
+    }
+    return msg.slice(data.length);
+  }
+  // (total_codewords, data_codewords, ec_per_block, num_blocks) for ECC level L, versions 1-6
+  const VINFO = {1:[26,19,7,1],2:[44,34,10,1],3:[70,55,15,1],4:[100,80,20,1],5:[134,108,26,1],6:[172,136,18,2]};
+  function sizeForVersion(v){ return 4*v+17; }
+  function alignmentCenter(v){ return v===1?null:4*v+10; }
+
+  function encodeBits(dataBytes, version){
+    const [,dataCw,,] = VINFO[version];
+    const bits=[];
+    function push(val,n){ for(let i=n-1;i>=0;i--) bits.push((val>>i)&1); }
+    push(0b0100,4);
+    push(dataBytes.length,8);
+    for(const b of dataBytes) push(b,8);
+    const capacityBits = dataCw*8;
+    const term = Math.min(4, capacityBits-bits.length);
+    if(term>0) push(0,term);
+    while(bits.length%8!==0) bits.push(0);
+    const codewords=[];
+    for(let i=0;i<bits.length;i+=8){
+      let v=0; for(let j=0;j<8;j++) v=(v<<1)|bits[i+j];
+      codewords.push(v);
+    }
+    let toggle=0;
+    while(codewords.length<dataCw){ codewords.push(toggle===0?0xEC:0x11); toggle^=1; }
+    return codewords;
+  }
+  function buildAllCodewords(dataBytes, version){
+    const [totalCw,dataCw,ecPerBlock,numBlocks] = VINFO[version];
+    const dataCodewords = encodeBits(dataBytes, version);
+    const perBlock = dataCw/numBlocks;
+    const blocks=[]; for(let b=0;b<numBlocks;b++) blocks.push(dataCodewords.slice(b*perBlock,(b+1)*perBlock));
+    const ecBlocks = blocks.map(b=>rsDivide(b,ecPerBlock));
+    const interleaved=[];
+    for(let i=0;i<perBlock;i++) for(const b of blocks) interleaved.push(b[i]);
+    for(let i=0;i<ecPerBlock;i++) for(const b of ecBlocks) interleaved.push(b[i]);
+    return interleaved;
+  }
+  const FMT_L_MASK0 = 0b111011111000100; // precomputed & verified BCH format string (ECC=L, mask=0)
+
+  function buildMatrix(version, allCodewords){
+    const n = sizeForVersion(version);
+    const mat = Array.from({length:n},()=>new Array(n).fill(0));
+    const reserved = Array.from({length:n},()=>new Array(n).fill(false));
+    function setM(r,c,val){ mat[r][c]=val; reserved[r][c]=true; }
+    function placeFinder(r0,c0){
+      for(let dr=-1;dr<8;dr++) for(let dc=-1;dc<8;dc++){
+        const r=r0+dr,c=c0+dc;
+        if(r<0||r>=n||c<0||c>=n) continue;
+        if(dr===-1||dr===7||dc===-1||dc===7) setM(r,c,0);
+        else if(dr===0||dr===6||dc===0||dc===6) setM(r,c,1);
+        else if(dr===1||dr===5||dc===1||dc===5) setM(r,c,0);
+        else setM(r,c,1);
+      }
+    }
+    placeFinder(0,0); placeFinder(0,n-7); placeFinder(n-7,0);
+    for(let i=8;i<n-8;i++){
+      const v = i%2===0?1:0;
+      if(!reserved[6][i]) setM(6,i,v);
+      if(!reserved[i][6]) setM(i,6,v);
+    }
+    const ac = alignmentCenter(version);
+    if(ac!==null){
+      for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++){
+        const r=ac+dr,c=ac+dc;
+        setM(r,c,(Math.max(Math.abs(dr),Math.abs(dc))===2||(dr===0&&dc===0))?1:0);
+      }
+    }
+    setM(4*version+9,8,1); // dark module
+    for(let i=0;i<9;i++){
+      if(!reserved[8][i]) setM(8,i,0);
+      if(!reserved[i][8]) setM(i,8,0);
+    }
+    for(let i=0;i<8;i++) setM(8,n-1-i,0);
+    for(let i=0;i<7;i++) setM(n-1-i,8,0);
+
+    const bits=[];
+    for(const cw of allCodewords) for(let i=7;i>=0;i--) bits.push((cw>>i)&1);
+    let bitIdx=0, col=n-1, upward=true;
+    while(col>0){
+      if(col===6){ col-=1; continue; }
+      const rowsRange = upward ? range(n-1,-1,-1) : range(0,n,1);
+      for(const row of rowsRange){
+        for(const c of [col,col-1]){
+          if(!reserved[row][c]){
+            let val = bitIdx<bits.length ? bits[bitIdx] : 0;
+            if((row+c)%2===0) val^=1;
+            mat[row][c]=val;
+            bitIdx++;
+          }
+        }
+      }
+      upward=!upward; col-=2;
+    }
+    function range(a,b,step){ const out=[]; if(step>0) for(let i=a;i<b;i+=step) out.push(i); else for(let i=a;i>b;i+=step) out.push(i); return out; }
+
+    const fmtBits=[]; for(let i=0;i<15;i++) fmtBits.push((FMT_L_MASK0>>i)&1);
+    const seq1=[]; for(const c of [0,1,2,3,4,5,7,8]) seq1.push([8,c]); for(const r of [7,5,4,3,2,1,0]) seq1.push([r,8]);
+    seq1.forEach(([r,c],idx)=>{ mat[r][c]=fmtBits[idx]; });
+    const seq2=[]; for(let c=n-1;c>=n-8;c--) seq2.push([8,c]); for(let r=n-7;r<n;r++) seq2.push([r,8]);
+    seq2.forEach(([r,c],idx)=>{ mat[r][c]=fmtBits[idx]; });
+    return mat;
+  }
+
+  function encodeUrl(str){
+    const dataBytes = Array.from(new TextEncoder().encode(str));
+    let version=null;
+    for(let v=1;v<=6;v++){ if(dataBytes.length <= VINFO[v][1]-2){ version=v; break; } }
+    if(version===null) return null; // too long for our supported range
+    const interleaved = buildAllCodewords(dataBytes, version);
+    const mat = buildMatrix(version, interleaved);
+    return {matrix:mat, size:sizeForVersion(version), version};
+  }
+
+  function toSvg(str, opts){
+    opts = opts||{};
+    const moduleSize = opts.moduleSize||8;
+    const quiet = 4; // required quiet-zone margin (in modules)
+    const result = encodeUrl(str);
+    if(!result) return null;
+    const {matrix,size} = result;
+    const dim = (size + quiet*2) * moduleSize;
+    let rects = '';
+    for(let r=0;r<size;r++){
+      for(let c=0;c<size;c++){
+        if(matrix[r][c]){
+          const x=(c+quiet)*moduleSize, y=(r+quiet)*moduleSize;
+          rects += `<rect x="${x}" y="${y}" width="${moduleSize}" height="${moduleSize}"/>`;
+        }
+      }
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim} ${dim}" width="${dim}" height="${dim}" shape-rendering="crispEdges">`+
+           `<rect width="${dim}" height="${dim}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
+  }
+  return { toSvg };
+})();
+
+/* ============ Firebase-backed storage layer ============
+   Same sGet/sSet/sDel/sList(key/prefix) contract as before — every other
+   function in this file calls these exactly as it always did. Only the
+   transport changed (Firebase Realtime Database instead of window.storage),
+   because window.storage's "shared" mode doesn't reliably propagate writes
+   from unauthenticated (no Claude account) devices to other viewers — that
+   was root-caused via the in-app diagnostic tools during testing.
+   Firebase keys can't contain '.', '#', '$', '[', ']', or '/', so team-name-derived
+   key fragments are safely encoded with sanitizeKey()/unsanitizeKey() below. */
+function sanitizeKey(s){ return encodeURIComponent(String(s)).replace(/\./g, '%2E'); }
+function unsanitizeKey(s){ return decodeURIComponent(String(s).replace(/%2E/g, '.')); }
+
+let db = null;
+if(window.__FIREBASE_READY__){
+  try{ db = firebase.database(); }
+  catch(e){
+    window.__FIREBASE_READY__ = false;
+    window.__FIREBASE_INIT_ERROR__ = 'firebase.database() threw: ' + (e && e.message ? e.message : e);
+  }
+}
+
+async function sGet(key){
+  try{ const snap = await db.ref('data/'+key).once('value'); return snap.exists() ? snap.val() : null; }
+  catch(e){ console.error('get failed', key, e); return null; }
+}
+async function sSet(key, value){
+  try{ await db.ref('data/'+key).set(JSON.stringify(value)); return true; }
+  catch(e){ console.error('set failed', key, e); return null; }
+}
+async function sDel(key){
+  try{ await db.ref('data/'+key).remove(); }catch(e){}
+}
+async function sList(prefix){
+  try{
+    const snap = await db.ref('data').orderByKey().startAt(prefix).endAt(prefix+'\uf8ff').once('value');
+    const val = snap.val();
+    return val ? Object.keys(val) : [];
+  }catch(e){ console.error('list failed', prefix, e); return []; }
+}
+// Same query as sList, but returns [{key, value}] in one round trip instead of
+// a separate sGet() per key — avoids the N+1 pattern for leaderboards/stakes.
+async function sListWithValues(prefix){
+  try{
+    const snap = await db.ref('data').orderByKey().startAt(prefix).endAt(prefix+'\uf8ff').once('value');
+    const val = snap.val();
+    if(!val) return [];
+    return Object.keys(val).map(k=>({key:k, value:val[k]}));
+  }catch(e){ console.error('listWithValues failed', prefix, e); return []; }
+}
+function J(v, fallback){ if(v==null) return fallback; try{ return JSON.parse(v);}catch(e){ return fallback; } }
+
+/* ============ shared state ============ */
+let CONFIG = { questions: [] };
+let GAME = { phase:'setup', qIndex:0 };
+let myTeamName = null;
+let myLastAllocSubmitted = null; // cache of my current alloc for this question
+let lastOkTime = Date.now();
+let currentRole = null;
+
+function markAlive(){ lastOkTime = Date.now(); }
+
+// Independent of whether polling succeeds — this is what actually notices when it's
+// been failing/stopped (e.g. wifi drop, or a backgrounded phone throttling its own timer)
+// and switches the connection dot from a lie ("live") to something honest.
+setInterval(()=>{
+  if(!currentRole) return;
+  const staleMs = Date.now() - lastOkTime;
+  const isStale = staleMs > 8000;
+  const dotId = currentRole==='team' ? 'team-conn-dot' : 'host-conn-dot';
+  const textId = currentRole==='team' ? 'team-conn-text' : 'host-conn-text';
+  const dot = document.getElementById(dotId), text = document.getElementById(textId);
+  if(!dot || !text) return;
+  dot.classList.toggle('off', isStale);
+  text.textContent = isStale ? 'reconnecting…' : 'live';
+}, 2000);
+
+/* ============ role select / routing ============ */
+function chooseRole(role){
+  if(role==='team'){
+    location.hash = 'team';
+    showTeamShell();
+  } else {
+    location.hash = 'host';
+    showHostShell();
+  }
+}
+function showTeamShell(){
+  currentRole = 'team';
+  document.getElementById('screen-role').classList.add('hidden');
+  document.getElementById('screen-host').classList.add('hidden');
+  document.getElementById('screen-team').classList.remove('hidden');
+  teamInit();
+}
+function showHostShell(){
+  currentRole = 'host';
+  document.getElementById('screen-role').classList.add('hidden');
+  document.getElementById('screen-team').classList.add('hidden');
+  document.getElementById('screen-host').classList.remove('hidden');
+  hostAuthGate();
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  const h = location.hash.replace('#','');
+  if(h.startsWith('team=')){
+    myTeamName = decodeURIComponent(h.slice(5));
+    showTeamShell();
+  } else if(h === 'team'){
+    showTeamShell();
+  } else if(h === 'host'){
+    showHostShell();
+  }
+});
+
+// Mobile browsers throttle/pause JS timers when a tab is backgrounded (e.g. phone screen
+// locked). When the team comes back, force an immediate tick instead of waiting up to
+// one full poll interval — makes the phone feel instantly caught up rather than stale.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && currentRole === 'team' && myTeamName){
+    teamTick();
+  }
+});
+
+/* ============================================================
+   TEAM APP
+   ============================================================ */
+function teamShow(id){
+  ['team-join-box','team-waiting-lobby','team-question-box','team-submitted-box','team-zero-box','team-reveal-box','team-final-box']
+    .forEach(x=>document.getElementById(x).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+async function teamInit(){
+  if(myTeamName){
+    document.getElementById('team-name-label').textContent = myTeamName.toUpperCase();
+    document.getElementById('team-points-wrap').classList.remove('hidden');
+    teamShow('team-waiting-lobby');
+  } else {
+    teamShow('team-join-box');
+  }
+  teamTick();
+  setInterval(teamTick, 2200);
+}
+
+async function teamStorageTest(){
+  const el = document.getElementById('team-storage-test-result');
+  el.style.color = ''; el.textContent = 'Running…';
+  const label = (document.getElementById('team-name-input').value.trim()) || myTeamName || 'unnamed-device';
+  const marker = 'diag:team-' + sanitizeKey(label) + '-' + Date.now();
+  try{
+    const setRes = await sSet(marker, {from:label, at:new Date().toString()});
+    const getRes = await sGet(marker);
+    const ok = !!setRes && !!getRes;
+    el.style.color = ok ? 'var(--teal)' : 'var(--magenta)';
+    el.textContent = ok
+      ? '✅ Marker written and read back fine on THIS device. Ask your host to hit "Check for team markers" to confirm it\'s visible there too.'
+      : '❌ Write or read-back failed on this device itself.';
+  }catch(e){
+    el.style.color = 'var(--magenta)';
+    el.textContent = '❌ Threw an error on this device: ' + (e && e.message ? e.message : e);
+  }
+}
+
+async function teamJoin(){
+  const val = document.getElementById('team-name-input').value.trim();
+  if(!val){ return; }
+  const btn = document.getElementById('team-join-btn');
+  const status = document.getElementById('team-join-status');
+  btn.disabled = true; btn.textContent = 'Joining…';
+  status.textContent = ''; status.style.color = '';
+
+  const teamKey = sanitizeKey(val);
+  const existing = await sGet('team:'+teamKey);
+
+  if(existing != null){
+    const proceed = confirm('A team called "'+val+'" already exists. If this is your team rejoining (e.g. you reloaded the page), click OK. If it isn\'t, click Cancel and pick a different name — two teams sharing a name will share the same score.');
+    if(!proceed){
+      btn.disabled = false; btn.textContent = 'Join finale';
+      status.style.color = 'var(--magenta)';
+      status.textContent = 'Please choose a different team name.';
+      return;
+    }
+  }
+
+  myTeamName = val;
+  history.replaceState(null,'', '#team=' + encodeURIComponent(val));
+
+  let writeOk = true;
+  if(existing==null){
+    const setResult = await sSet('team:'+teamKey, {name:val, joined:Date.now()});
+    if(setResult==null){ writeOk = false; }
+    else {
+      // read-after-write: confirm it actually landed, don't just trust the set() call
+      const verify = await sGet('team:'+teamKey);
+      if(verify==null) writeOk = false;
+    }
+  }
+  if(writeOk){
+    const existingPts = await sGet('points:'+teamKey);
+    if(existingPts==null){
+      await sSet('points:'+teamKey, 0);
+    }
+  }
+
+  if(!writeOk){
+    btn.disabled = false; btn.textContent = 'Join finale';
+    status.style.color = 'var(--magenta)';
+    status.textContent = "Couldn't reach shared storage — check you're on the connection and try again. If this keeps happening, tell your host.";
+    return;
+  }
+
+  document.getElementById('team-name-label').textContent = val.toUpperCase();
+  document.getElementById('team-points-wrap').classList.remove('hidden');
+  status.style.color = 'var(--teal)';
+  status.textContent = '';
+  teamShow('team-waiting-lobby');
+  teamTick();
+}
+
+let revealAppliedLocally = {}; // qIndex -> {satOut, ptsAfter} once this device has applied/cached that question's result
+
+// Catches a team up on every question that's genuinely been revealed so far, regardless
+// of what GAME.phase happened to be at the moment this device last polled. Without this,
+// a phone that's locked/backgrounded (browsers throttle its timer) could miss the exact
+// tick where phase==='reveal' for a question — the host moving stakes→reveal→next in the
+// few seconds before that phone wakes up again — and that team's points would silently
+// never update for a question they actually answered. Re-running this every tick, keyed
+// off question index rather than the live phase, makes it safe no matter how far behind
+// a device has fallen or how fast the host clicks through.
+async function teamCatchUpReveals(){
+  if(!CONFIG.questions || CONFIG.questions.length===0) return;
+  let lastRevealedIdx;
+  if(GAME.phase==='final') lastRevealedIdx = CONFIG.questions.length - 1;
+  else if(GAME.phase==='reveal') lastRevealedIdx = GAME.qIndex;
+  else lastRevealedIdx = GAME.qIndex - 1; // 'question'/'stakes': only prior questions are fully revealed so far
+  for(let qi=0; qi<=lastRevealedIdx; qi++){
+    if(revealAppliedLocally[qi]) continue;
+    const q = CONFIG.questions[qi];
+    if(!q) continue;
+    const ansRaw = await sGet('ans:'+qi+':'+sanitizeKey(myTeamName));
+    if(!ansRaw){ revealAppliedLocally[qi] = {satOut:true, ptsAfter:null}; continue; }
+    const ans = J(ansRaw, {allocations:[], applied:false});
+    if(ans.applied){
+      revealAppliedLocally[qi] = {satOut:false, ptsAfter: ans.resultPoints};
+      continue;
+    }
+    const won = ans.allocations[q.correctIndex] || 0;
+    await sSet('points:'+sanitizeKey(myTeamName), won);
+    await sSet('ans:'+qi+':'+sanitizeKey(myTeamName), {...ans, applied:true, resultPoints:won});
+    revealAppliedLocally[qi] = {satOut:false, ptsAfter:won};
+  }
+}
+
+async function teamTick(){
+  if(!myTeamName) return;
+  const gameRaw = await sGet('game-state');
+  if(gameRaw==null){ return; }
+  markAlive();
+  GAME = J(gameRaw, GAME);
+
+  // config barely ever changes once the finale has started — fetch once, not every 2.2s tick
+  if(CONFIG.questions.length===0){
+    const cfgRaw = await sGet('config');
+    CONFIG = J(cfgRaw, CONFIG);
+  }
+
+  await teamCatchUpReveals();
+
+  const ptsRaw = await sGet('points:'+sanitizeKey(myTeamName));
+  const pts = ptsRaw==null ? 0 : parseInt(ptsRaw,10) || 0;
+  document.getElementById('team-points-val').textContent = pts;
+
+  if(GAME.phase==='setup' || GAME.phase==='lobby'){
+    teamShow('team-waiting-lobby');
+    return;
+  }
+
+  if(GAME.phase==='final'){
+    await teamRenderFinal(pts);
+    return;
+  }
+
+  const qi = GAME.qIndex;
+  const q = CONFIG.questions[qi];
+  if(!q){ teamShow('team-waiting-lobby'); return; }
+
+  if(GAME.phase==='question'){
+    if(pts<=0){
+      teamShow('team-zero-box');
+      return;
+    }
+    const ansRaw = await sGet('ans:'+qi+':'+sanitizeKey(myTeamName));
+    if(ansRaw){
+      teamShow('team-submitted-box');
+    } else {
+      teamRenderQuestion(qi, q, pts);
+      teamShow('team-question-box');
+    }
+    return;
+  }
+
+  if(GAME.phase==='stakes'){
+    // stakes are shown host-side only for now — teams just keep waiting, same as after submitting
+    teamShow(pts<=0 ? 'team-zero-box' : 'team-submitted-box');
+    return;
+  }
+
+  if(GAME.phase==='reveal'){
+    teamRenderReveal(qi, q, pts);
+    return;
+  }
+}
+
+function teamRenderQuestion(qi, q, pts){
+  document.getElementById('team-q-index').textContent = 'Question ' + (qi+1) + ' of ' + CONFIG.questions.length;
+  document.getElementById('team-q-text').textContent = q.text;
+  const list = document.getElementById('team-options-list');
+  list.innerHTML = '';
+  window._teamAlloc = window._teamAlloc && window._teamAllocQ===qi ? window._teamAlloc : q.options.map(()=>0);
+  window._teamAllocQ = qi;
+  q.options.forEach((opt,i)=>{
+    const row = document.createElement('div');
+    row.className = 'opt-row';
+    row.innerHTML = `
+      <span class="opt-label">${escapeHtml(opt)}</span>
+      <button class="opt-all-btn" type="button" onclick="teamAllocAll(${i}, ${pts})">ALL</button>
+      <input class="opt-input" type="number" inputmode="numeric" min="0" max="${pts}" value="${window._teamAlloc[i]}" oninput="teamAllocChange(${i}, this.value, ${pts})">
+    `;
+    list.appendChild(row);
+  });
+  teamUpdateTotal(pts);
+}
+function teamAllocChange(i, val, pts){
+  let n = parseInt(val,10); if(isNaN(n)||n<0) n=0;
+  window._teamAlloc[i] = n;
+  teamUpdateTotal(pts);
+  teamRefreshInputs();
+}
+function teamAllocAll(i, pts){
+  window._teamAlloc = window._teamAlloc.map((_,idx)=> idx===i ? pts : 0);
+  teamUpdateTotal(pts);
+  teamRefreshInputs();
+}
+function teamRefreshInputs(){
+  const inputs = document.querySelectorAll('#team-options-list .opt-input');
+  inputs.forEach((inp,i)=>{ inp.value = window._teamAlloc[i]; });
+}
+function teamUpdateTotal(pts){
+  const sum = window._teamAlloc.reduce((a,b)=>a+b,0);
+  const el = document.getElementById('team-alloc-total');
+  document.getElementById('team-alloc-total-val').textContent = sum + ' / ' + pts;
+  const ok = sum === pts;
+  el.classList.toggle('ok', ok);
+  el.classList.toggle('bad', !ok);
+  document.getElementById('team-submit-btn').disabled = !ok;
+}
+async function teamSubmit(){
+  const qi = window._teamAllocQ;
+  await sSet('ans:'+qi+':'+sanitizeKey(myTeamName), {allocations: window._teamAlloc, submittedAt: Date.now(), applied:false});
+  teamShow('team-submitted-box');
+}
+async function teamEditAnswer(){
+  const qi = GAME.qIndex;
+  await sDel('ans:'+qi+':'+sanitizeKey(myTeamName));
+  teamTick();
+}
+
+function teamRenderReveal(qi, q, ptsAfter){
+  const correctText = q.options[q.correctIndex];
+  document.getElementById('team-correct-ans').textContent = '✅ ' + correctText;
+  const satOutNote = document.getElementById('team-sat-out-note');
+
+  // teamCatchUpReveals() already ran earlier this tick and covers qi<=GAME.qIndex when
+  // phase is 'reveal', so the cache is guaranteed populated here — this is now a pure render.
+  const cached = revealAppliedLocally[qi] || {satOut:false, ptsAfter};
+  satOutNote.style.display = cached.satOut ? 'block' : 'none';
+  renderRevealDelta(cached.ptsAfter!=null ? cached.ptsAfter : ptsAfter, cached.satOut);
+}
+function renderRevealDelta(ptsAfter, satOut){
+  const deltaEl = document.getElementById('team-delta');
+  if(satOut){
+    deltaEl.textContent = '';
+    deltaEl.className = 'delta';
+  } else if(ptsAfter > 0){
+    deltaEl.textContent = '+' + ptsAfter + ' kept';
+    deltaEl.className = 'delta up';
+  } else {
+    deltaEl.textContent = 'Wiped out';
+    deltaEl.className = 'delta down';
+  }
+  document.getElementById('team-points-after').textContent = ptsAfter;
+  teamShow('team-reveal-box');
+}
+
+async function teamRenderFinal(myPts){
+  // one batched query instead of a list-call plus N individual gets
+  const entries = await sListWithValues('points:');
+  const rows = entries.map(({key,value}) => ({
+    name: unsanitizeKey(key.slice('points:'.length)),
+    pts: parseInt(value,10)||0
+  }));
+  rows.sort((a,b)=>b.pts-a.pts);
+  const myRank = rows.findIndex(r=>r.name===myTeamName) + 1;
+  const emoji = myRank===1 ? '🏆' : myRank===2 ? '🥈' : myRank===3 ? '🥉' : '🏁';
+  document.getElementById('team-final-emoji').textContent = emoji;
+  document.getElementById('team-final-place').textContent = myRank===1 ? "You won! 🎉" : ('#' + myRank + ' place');
+  document.getElementById('team-final-points').textContent = myPts;
+  teamShow('team-final-box');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   HOST APP
+   ============================================================ */
+function hostShow(id){
+  ['host-setup','host-lobby','host-points-setup','host-question','host-stakes','host-reveal','host-final']
+    .forEach(x=>document.getElementById(x).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+async function hostAuthGate(){
+  const pwRaw = await sGet('host-password');
+  const hasPw = pwRaw!=null && pwRaw!=='' && pwRaw!=='""';
+  document.getElementById('host-auth-set-box').classList.toggle('hidden', hasPw);
+  document.getElementById('host-auth-enter-box').classList.toggle('hidden', !hasPw);
+  document.getElementById('host-auth-error').style.display = 'none';
+}
+async function hostSetPassword(){
+  const val = document.getElementById('host-auth-set-input').value;
+  if(!val) return;
+  await sSet('host-password', val);
+  await hostEnterMain();
+}
+async function hostSubmitPassword(){
+  const val = document.getElementById('host-auth-enter-input').value;
+  const storedRaw = await sGet('host-password');
+  const stored = J(storedRaw, storedRaw);
+  if(val && val === stored){
+    await hostEnterMain();
+  } else {
+    document.getElementById('host-auth-error').style.display = 'block';
+  }
+}
+async function hostEnterMain(){
+  document.getElementById('host-auth').classList.add('hidden');
+  document.getElementById('host-main').classList.remove('hidden');
+  hostInit();
+}
+function hostToggleChangePw(){
+  document.getElementById('host-change-pw-row').classList.toggle('hidden');
+}
+async function hostChangePassword(){
+  const val = document.getElementById('host-new-pw-input').value;
+  if(!val) return;
+  await sSet('host-password', val);
+  document.getElementById('host-new-pw-input').value = '';
+  document.getElementById('host-change-pw-row').classList.add('hidden');
+}
+
+async function hostInit(){
+  const cfgRaw = await sGet('config');
+  CONFIG = J(cfgRaw, {questions:[]});
+  if(CONFIG.questions.length===0){
+    for(let i=0;i<7;i++) setupAddQuestion();
+  } else {
+    renderSetupQuestions();
+  }
+  renderQRCode();
+  const gameRaw = await sGet('game-state');
+  GAME = J(gameRaw, {phase:'setup', qIndex:0});
+  routeHostByPhase();
+  hostTick();
+  setInterval(hostTick, 3000);
+}
+
+function routeHostByPhase(){
+  if(GAME.phase==='setup') hostShow('host-setup');
+  else if(GAME.phase==='lobby') hostShow('host-lobby');
+  else if(GAME.phase==='question') hostShow('host-question');
+  else if(GAME.phase==='stakes') hostShow('host-stakes');
+  else if(GAME.phase==='reveal') hostShow('host-reveal');
+  else if(GAME.phase==='final') hostShow('host-final');
+}
+
+/* ---- setup screen ---- */
+function setupAddQuestion(){
+  CONFIG.questions.push({text:'', options:['',''], correctIndex:0});
+  renderSetupQuestions();
+}
+function setupRemoveQuestion(qi){
+  CONFIG.questions.splice(qi,1);
+  renderSetupQuestions();
+}
+function setupAddOption(qi){
+  CONFIG.questions[qi].options.push('');
+  renderSetupQuestions();
+}
+function setupRemoveOption(qi, oi){
+  CONFIG.questions[qi].options.splice(oi,1);
+  if(CONFIG.questions[qi].correctIndex >= CONFIG.questions[qi].options.length){
+    CONFIG.questions[qi].correctIndex = 0;
+  }
+  renderSetupQuestions();
+}
+function setupUpdateQText(qi, val){ CONFIG.questions[qi].text = val; }
+function setupUpdateOptText(qi, oi, val){ CONFIG.questions[qi].options[oi] = val; }
+function setupUpdateCorrect(qi, oi){ CONFIG.questions[qi].correctIndex = oi; }
+
+function renderSetupQuestions(){
+  const wrap = document.getElementById('setup-questions-list');
+  wrap.innerHTML = '';
+  CONFIG.questions.forEach((q,qi)=>{
+    const box = document.createElement('div');
+    box.className = 'setup-q';
+    let optsHtml = q.options.map((opt,oi)=>`
+      <div class="setup-opt-row">
+        <input type="radio" class="radio-correct" name="correct-${qi}" ${q.correctIndex===oi?'checked':''} onchange="setupUpdateCorrect(${qi},${oi})" title="Mark as correct answer">
+        <input type="text" placeholder="Option ${oi+1}" value="${escapeAttr(opt)}" oninput="setupUpdateOptText(${qi},${oi},this.value)" style="flex:1;">
+        <button class="btn-ghost" onclick="setupRemoveOption(${qi},${oi})">✕</button>
+      </div>
+    `).join('');
+    box.innerHTML = `
+      <div class="setup-q-head">
+        <b>Question ${qi+1}</b>
+        <button class="btn-danger" onclick="setupRemoveQuestion(${qi})">Remove question</button>
+      </div>
+      <input type="text" placeholder="Question text" value="${escapeAttr(q.text)}" oninput="setupUpdateQText(${qi},this.value)" style="margin-bottom:10px;">
+      ${optsHtml}
+      <button class="btn-ghost" onclick="setupAddOption(${qi})">+ Add option</button>
+      <div class="footer-note" style="text-align:left; margin-top:6px;">Select the radio button next to the correct answer.</div>
+    `;
+    wrap.appendChild(box);
+  });
+}
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+let hostActionBusy = false; // guards against a rapid double-click double-firing a phase transition (e.g. skipping a question)
+
+async function setupSave(openLobby){
+  if(hostActionBusy) return;
+  hostActionBusy = true;
+  try{
+    await sSet('config', CONFIG);
+    if(openLobby){
+      GAME = {phase:'lobby', qIndex:0};
+      await sSet('game-state', GAME);
+      renderQRCode();
+      hostShow('host-lobby');
+    }
+  } finally {
+    hostActionBusy = false;
+  }
+}
+function hostBackToSetup(){
+  GAME.phase='setup';
+  sSet('game-state', GAME);
+  hostShow('host-setup');
+}
+
+function renderQRCode(){
+  const container = document.getElementById('qr-svg-container');
+  const url = location.origin + location.pathname + '#team';
+  const svg = QR.toSvg(url, {moduleSize:8});
+  if(svg){
+    container.innerHTML = svg;
+    // constrain the crisp inline SVG to a sensible display size regardless of module count
+    const svgEl = container.querySelector('svg');
+    if(svgEl){ svgEl.style.width = '240px'; svgEl.style.height = '240px'; }
+  } else {
+    container.innerHTML = '<div style="padding:20px; color:#333; font-size:13px; max-width:240px;">That link is too long to render as a QR code here — share the link below directly instead.</div>';
+  }
+  document.getElementById('join-url-text').textContent = url;
+}
+
+/* ---- lobby ---- */
+async function hostRenderLobby(){
+  let keys;
+  try{
+    keys = await sList('team:');
+  }catch(e){
+    document.getElementById('lobby-count').textContent = 'Storage error: ' + (e && e.message ? e.message : e);
+    document.getElementById('lobby-count').style.color = 'var(--magenta)';
+    return;
+  }
+  document.getElementById('lobby-count').style.color = '';
+  const chips = document.getElementById('lobby-team-chips');
+  chips.innerHTML = keys.map(k=>`<span class="team-chip">${escapeHtml(unsanitizeKey(k.slice('team:'.length)))}</span>`).join('');
+  document.getElementById('lobby-count').textContent = keys.length + ' team' + (keys.length===1?'':'s') + ' joined  (checked ' + new Date().toLocaleTimeString() + ')';
+}
+
+async function hostCheckTeamMarkers(){
+  const el = document.getElementById('storage-test-result');
+  el.style.color = ''; el.textContent = 'Checking…';
+  try{
+    const keys = await sList('diag:team-');
+    if(keys.length===0){
+      el.style.color = 'var(--magenta)';
+      el.textContent = '⚠️ No team markers found yet. Ask a team to hit "Run storage test" on their phone, then try this again.';
+    } else {
+      el.style.color = 'var(--teal)';
+      el.textContent = '✅ Found ' + keys.length + ' team marker(s): ' + keys.map(k=>unsanitizeKey(k.replace('diag:team-',''))).join(', ');
+    }
+  }catch(e){
+    el.style.color = 'var(--magenta)';
+    el.textContent = '❌ Error checking: ' + (e && e.message ? e.message : e);
+  }
+}
+
+async function hostStorageTest(){
+  const el = document.getElementById('storage-test-result');
+  el.style.color = '';
+  el.textContent = 'Running…';
+  const testKey = 'diag:' + Date.now();
+  const steps = [];
+  try{
+    const setRes = await sSet(testKey, {ping:'pong'});
+    steps.push('write: ' + (setRes ? 'ok' : 'returned null'));
+    const getRes = await sGet(testKey);
+    steps.push('read-back: ' + (getRes ? 'ok (' + getRes + ')' : 'returned null'));
+    const listKeys = await sList('diag:');
+    steps.push('list: ' + listKeys.length + ' key(s) found');
+    await sDel(testKey);
+    const allGood = setRes && getRes && listKeys.includes(testKey);
+    el.style.color = allGood ? 'var(--teal)' : 'var(--magenta)';
+    el.textContent = (allGood ? '✅ Storage round-trip works. ' : '⚠️ Something is off. ') + steps.join(' · ');
+  }catch(e){
+    el.style.color = 'var(--magenta)';
+    el.textContent = '❌ Threw an error: ' + (e && e.message ? e.message : e) + '  [' + steps.join(' · ') + ']';
+  }
+}
+async function hostGoToPoints(){
+  const keys = await sList('team:');
+  const list = document.getElementById('points-setup-list');
+  list.innerHTML = keys.map(k=>{
+    const name = k.slice('team:'.length); // sanitized key fragment — keep as-is for the DOM id
+    const displayName = unsanitizeKey(name);
+    return `<div class="points-row"><span>${escapeHtml(displayName)}</span><input type="number" id="pts-${cssId(name)}" value="0" min="0"></div>`;
+  }).join('');
+  hostShow('host-points-setup');
+}
+function cssId(s){ return s.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+async function hostStartFinale(){
+  if(hostActionBusy) return;
+  hostActionBusy = true;
+  try{
+    const keys = await sList('team:');
+    for(const k of keys){
+      const name = k.slice('team:'.length); // sanitized key fragment — must match the one used to build the DOM id above
+      const inp = document.getElementById('pts-'+cssId(name));
+      const val = inp ? (parseInt(inp.value,10)||0) : 0;
+      await sSet('points:'+name, val);
+    }
+    GAME = {phase:'question', qIndex:0};
+    await sSet('game-state', GAME);
+    hostShow('host-question');
+  } finally {
+    hostActionBusy = false;
+  }
+}
+
+/* ---- question / reveal ---- */
+async function hostTick(){
+  const gameRaw = await sGet('game-state');
+  if(gameRaw==null) return;
+  markAlive();
+  const newGame = J(gameRaw, GAME);
+  const phaseChanged = newGame.phase !== GAME.phase || newGame.qIndex !== GAME.qIndex;
+  GAME = newGame;
+  if(phaseChanged) routeHostByPhase();
+
+  if(GAME.phase==='lobby'){ await hostRenderLobby(); }
+  if(GAME.phase==='question'){ await hostRenderQuestion(); await hostRenderLeaderboard('host-leaderboard'); }
+  if(GAME.phase==='stakes'){ await hostRenderStakes(); await hostRenderLeaderboard('host-leaderboard-stakes'); }
+  if(GAME.phase==='reveal'){ await hostRenderRevealScreen(); await hostRenderLeaderboard('host-leaderboard-2'); }
+  if(GAME.phase==='final'){ await hostRenderFinal(); }
+}
+
+async function hostRenderQuestion(){
+  const qi = GAME.qIndex;
+  const q = CONFIG.questions[qi];
+  if(!q) return;
+  document.getElementById('host-q-eyebrow').textContent = 'Question ' + (qi+1) + ' of ' + CONFIG.questions.length;
+  document.getElementById('host-q-text').textContent = q.text;
+  document.getElementById('host-q-opts').innerHTML = q.options.map(o=>`<div class="stage-opt">${escapeHtml(o)}</div>`).join('');
+
+  const teamKeys = await sList('team:');
+  const teamNames = teamKeys.map(k=>k.slice('team:'.length));
+  const ansPrefix = 'ans:'+qi+':';
+  const ansKeys = await sList(ansPrefix);
+  const submittedNames = new Set(ansKeys.map(k=>k.slice(ansPrefix.length)));
+  const pendingNames = teamNames.filter(n=>!submittedNames.has(n));
+  const allIn = teamNames.length>0 && pendingNames.length===0;
+
+  const countEl = document.getElementById('host-submit-count');
+  countEl.textContent = submittedNames.size + ' / ' + teamNames.length + ' teams submitted';
+  countEl.style.background = allIn ? 'rgba(35,217,160,0.15)' : '';
+  countEl.style.borderColor = allIn ? 'var(--teal)' : '';
+  countEl.style.color = allIn ? 'var(--teal)' : '';
+
+  const detail = document.getElementById('host-submit-detail');
+  let html = '';
+  if(allIn){
+    html += `<div style="color:var(--teal); font-weight:700; margin-bottom:10px;">✅ Everyone's in — safe to reveal!</div>`;
+  } else if(pendingNames.length){
+    html += `<div style="font-size:12px; color:var(--muted); margin-bottom:6px;">Waiting on:</div>` +
+      pendingNames.map(n=>`<span class="team-chip" style="color:var(--muted);">⏳ ${escapeHtml(unsanitizeKey(n))}</span>`).join('');
+  }
+  if(submittedNames.size){
+    html += `<div style="font-size:12px; color:var(--muted); margin:12px 0 6px;">Submitted:</div>` +
+      [...submittedNames].map(n=>`<span class="team-chip" style="border-color:var(--teal); color:var(--teal);">✅ ${escapeHtml(unsanitizeKey(n))}</span>`).join('');
+  }
+  detail.innerHTML = html;
+}
+async function hostShowStakes(){
+  if(hostActionBusy) return;
+  hostActionBusy = true;
+  try{
+    GAME.phase = 'stakes';
+    await sSet('game-state', GAME);
+    hostShow('host-stakes');
+    await hostRenderStakes();
+  } finally {
+    hostActionBusy = false;
+  }
+}
+async function hostRenderStakes(){
+  const qi = GAME.qIndex;
+  const q = CONFIG.questions[qi];
+  if(!q) return;
+  document.getElementById('host-stakes-eyebrow').textContent = 'Question ' + (qi+1) + ' of ' + CONFIG.questions.length + " — how it's split";
+  document.getElementById('host-stakes-q-text').textContent = q.text;
+
+  const ansPrefix = 'ans:'+qi+':';
+  const entries = await sListWithValues(ansPrefix); // one batched query for every team's submission on this question
+  const totals = new Array(q.options.length).fill(0);
+  for(const {value} of entries){
+    const ans = J(value, null);
+    if(!ans || !Array.isArray(ans.allocations)) continue;
+    ans.allocations.forEach((amt,i)=>{ if(i<totals.length) totals[i] += (parseInt(amt,10)||0); });
+  }
+  const max = Math.max(1, ...totals);
+  document.getElementById('host-stakes-bars').innerHTML = q.options.map((o,i)=>`
+    <div class="stake-row">
+      <div class="stake-label"><span>${escapeHtml(o)}</span><span class="stake-pts">${totals[i]} pts</span></div>
+      <div class="stake-bar-bg"><div class="stake-bar" style="width:${Math.round(totals[i]/max*100)}%"></div></div>
+    </div>
+  `).join('');
+}
+
+async function hostReveal(){
+  if(hostActionBusy) return;
+  hostActionBusy = true;
+  try{
+    GAME.phase = 'reveal';
+    await sSet('game-state', GAME);
+    hostShow('host-reveal');
+    await hostRenderRevealScreen();
+  } finally {
+    hostActionBusy = false;
+  }
+}
+async function hostRenderRevealScreen(){
+  const qi = GAME.qIndex;
+  const q = CONFIG.questions[qi];
+  if(!q) return;
+  document.getElementById('host-reveal-eyebrow').textContent = 'Question ' + (qi+1) + ' of ' + CONFIG.questions.length + ' — revealed';
+  document.getElementById('host-reveal-q-text').textContent = q.text;
+  document.getElementById('host-reveal-opts').innerHTML = q.options.map((o,i)=>
+    `<div class="stage-opt ${i===q.correctIndex?'is-correct':''}">${escapeHtml(o)}${i===q.correctIndex?' ✅':''}</div>`
+  ).join('');
+}
+async function hostNext(){
+  if(hostActionBusy) return;
+  hostActionBusy = true;
+  try{
+    const nextQi = GAME.qIndex + 1;
+    if(nextQi >= CONFIG.questions.length){
+      GAME = {phase:'final', qIndex: GAME.qIndex};
+    } else {
+      GAME = {phase:'question', qIndex: nextQi};
+    }
+    await sSet('game-state', GAME);
+    routeHostByPhase();
+  } finally {
+    hostActionBusy = false;
+  }
+}
+
+function rankBadge(i){
+  return i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : String(i+1);
+}
+async function hostRenderLeaderboard(targetId){
+  // one batched query instead of a list-call plus N individual gets
+  const entries = await sListWithValues('points:');
+  const rows = entries.map(({key,value}) => ({
+    name: unsanitizeKey(key.slice('points:'.length)),
+    pts: parseInt(value,10)||0
+  }));
+  rows.sort((a,b)=>b.pts-a.pts);
+  const max = Math.max(1, ...rows.map(r=>r.pts));
+  const el = document.getElementById(targetId);
+  el.innerHTML = rows.map((r,i)=>`
+    <div class="lb-row ${i===0?'first':''}">
+      <div class="lb-rank">${rankBadge(i)}</div>
+      <div class="lb-name">${escapeHtml(r.name)}</div>
+      <div class="lb-bar-bg"><div class="lb-bar" style="width:${Math.round(r.pts/max*100)}%"></div></div>
+      <div class="lb-pts">${r.pts}</div>
+    </div>
+  `).join('');
+}
+async function hostRenderFinal(){
+  // one batched query instead of a list-call plus N individual gets
+  const entries = await sListWithValues('points:');
+  const rows = entries.map(({key,value}) => ({
+    name: unsanitizeKey(key.slice('points:'.length)),
+    pts: parseInt(value,10)||0
+  }));
+  rows.sort((a,b)=>b.pts-a.pts);
+  document.getElementById('host-final-winner').textContent = rows.length ? rows[0].name : '—';
+  const el = document.getElementById('host-final-leaderboard');
+  const max = Math.max(1, ...rows.map(r=>r.pts));
+  el.innerHTML = rows.map((r,i)=>`
+    <div class="lb-row ${i===0?'first':''}">
+      <div class="lb-rank">${rankBadge(i)}</div>
+      <div class="lb-name">${escapeHtml(r.name)}</div>
+      <div class="lb-bar-bg"><div class="lb-bar" style="width:${Math.round(r.pts/max*100)}%"></div></div>
+      <div class="lb-pts">${r.pts}</div>
+    </div>
+  `).join('');
+}
+
+async function hostResetGame(){
+  if(!confirm('Reset game? This clears all teams, points and answers so far — but keeps your questions exactly as set up. Cannot be undone.')) return;
+  const prefixes = ['team:','points:','ans:'];
+  for(const p of prefixes){
+    const keys = await sList(p);
+    for(const k of keys){ await sDel(k); }
+  }
+  GAME = {phase:'lobby', qIndex:0};
+  await sSet('game-state', GAME);
+  renderQRCode();
+  hostShow('host-lobby');
+}
+
+async function hostReprogrammeQuestions(){
+  if(!confirm('Reprogramme questions? This wipes EVERYTHING — all teams, points, answers, AND your questions — so you can start completely from scratch. Cannot be undone.')) return;
+  const prefixes = ['team:','points:','ans:'];
+  for(const p of prefixes){
+    const keys = await sList(p);
+    for(const k of keys){ await sDel(k); }
+  }
+  await sDel('config');
+  await sDel('game-state');
+  CONFIG = {questions:[]};
+  GAME = {phase:'setup', qIndex:0};
+  for(let i=0;i<7;i++) setupAddQuestion();
+  hostShow('host-setup');
+}
+
+/* render QR as soon as we land on host, in case lobby is already open on reload */
+window.addEventListener('DOMContentLoaded', renderQRCode);
+</script>
+</body>
+</html>
